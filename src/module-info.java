@@ -1,0 +1,9 @@
+/**
+ * 
+ */
+/**
+ * @author naruj
+ *
+ */
+module mySpringFramework {
+}
