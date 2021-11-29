@@ -12,7 +12,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import ru.springframework.bean.factory.stereotypes.Component;
+import ru.springframework.bean.factory.stereotypes.Resource;
 import ru.springframework.beans.factory.annotation.Autowired;
+import ru.springframework.beans.factory.annotation.Bean;
 
 public class BeanFactory {
 	private Map<String, Object> singletons = new HashMap<>();
@@ -21,18 +23,29 @@ public class BeanFactory {
 		return singletons.get(beanName);
 	}
 
+	private void invokeSetter(Object object, Object dependency, Field field) throws IllegalAccessException,
+			IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
+		if (dependency.getClass().equals(field.getType())) {
+			String setterName = "set" + field.getName().substring(0, 1).toUpperCase() + field.getName().substring(1);
+			Method setter = object.getClass().getMethod(setterName, dependency.getClass());
+			setter.invoke(object, dependency);
+		}
+	}
+
+	/**
+	 * Проходит по найденым бинам и производит внедрение зависимостей
+	 */
 	public void populateProperties() throws IllegalAccessException, IllegalArgumentException, InvocationTargetException,
 			NoSuchMethodException, SecurityException {
 		for (Object object : singletons.values()) {
 			for (Field field : object.getClass().getDeclaredFields()) {
-				if (field.isAnnotationPresent(Autowired.class)) {
+				if (field.isAnnotationPresent(Resource.class)) {
+					String beanKey = field.getAnnotation(Resource.class).name();
+					Object dependency = singletons.get(beanKey);
+					invokeSetter(object, dependency, field);
+				} else if (field.isAnnotationPresent(Autowired.class)) {
 					for (Object dependency : singletons.values()) {
-						if (dependency.getClass().equals(field.getType())) {
-							String setterName = "set" + field.getName().substring(0, 1).toUpperCase()
-									+ field.getName().substring(1);
-							Method setter = object.getClass().getMethod(setterName, dependency.getClass());
-							setter.invoke(object, dependency);
-						}
+						invokeSetter(object, dependency, field);
 					}
 				}
 			}
@@ -67,6 +80,8 @@ public class BeanFactory {
 							Object instance = classObject.newInstance();
 							String beanName = className.substring(0, 1).toLowerCase() + className.substring(1);
 							singletons.put(beanName, instance);
+						} else if (classObject.isAnnotationPresent(Bean.class)) {
+							singletons.put(classObject.getAnnotation(Bean.class).name(), classObject.newInstance());
 						}
 					}
 

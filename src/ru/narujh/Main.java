@@ -14,7 +14,7 @@ public class Main {
 			e.printStackTrace();
 		}
 		ProductService productService = (ProductService) beanFactory.getBean("productService");
-		System.out.println(productService.getPromotionService());
+		System.out.println(productService.getPromotionsService());
 	}
 
 }
